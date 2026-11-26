@@ -9,8 +9,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - run: chmod +x gradlew && ./gradlew build
+      - run: chmod +x gradlew && ./gradlew build --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: dirt-legends-jar
           path: build/libs/dirt-legends-1.0.0.jar
+          if-no-files-found: error
