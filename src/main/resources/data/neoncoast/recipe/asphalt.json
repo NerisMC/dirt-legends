@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "GC",
+    "CG"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:gravel"
+    },
+    "C": {
+      "item": "minecraft:coal"
+    }
+  },
+  "result": {
+    "id": "neoncoast:asphalt",
+    "count": 8
+  }
+}

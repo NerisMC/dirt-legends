@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "neoncoast:asphalt",
+    "neoncoast:road_line",
+    "neoncoast:sidewalk",
+    "neoncoast:shop_terminal",
+    "neoncoast:chop_shop"
+  ]
+}

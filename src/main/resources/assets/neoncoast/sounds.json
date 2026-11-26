@@ -1,0 +1,14 @@
+{
+  "car_engine": {
+    "sounds": [
+      "neoncoast:car_engine"
+    ],
+    "subtitle": "subtitles.neoncoast.car_engine"
+  },
+  "siren": {
+    "sounds": [
+      "neoncoast:siren"
+    ],
+    "subtitle": "subtitles.neoncoast.siren"
+  }
+}

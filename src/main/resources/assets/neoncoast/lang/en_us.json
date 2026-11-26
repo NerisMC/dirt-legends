@@ -1,0 +1,21 @@
+{
+  "itemGroup.neoncoast": "Neon Coast",
+  "entity.neoncoast.sedan": "Sedan",
+  "entity.neoncoast.sports_car": "Sports Car",
+  "entity.neoncoast.police_car": "Police Car",
+  "entity.neoncoast.police_officer": "Police Officer",
+  "item.neoncoast.sedan_key": "Sedan Key",
+  "item.neoncoast.sports_car_key": "Sports Car Key",
+  "item.neoncoast.police_car_key": "Police Car Key",
+  "item.neoncoast.repair_kit": "Repair Kit",
+  "item.neoncoast.package": "Delivery Package",
+  "item.neoncoast.city_kit": "City Kit",
+  "block.neoncoast.asphalt": "Asphalt",
+  "block.neoncoast.road_line": "Road Line",
+  "block.neoncoast.sidewalk": "Sidewalk",
+  "block.neoncoast.shop_terminal": "Shop Terminal",
+  "block.neoncoast.job_board": "Job Board",
+  "block.neoncoast.chop_shop": "Chop Shop",
+  "subtitles.neoncoast.car_engine": "Engine revs",
+  "subtitles.neoncoast.siren": "Police siren"
+}
