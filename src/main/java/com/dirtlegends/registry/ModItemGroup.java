@@ -27,6 +27,10 @@ public final class ModItemGroup {
                         entries.add(ModBlocks.KICKER_RAMP);
                         entries.add(ModBlocks.START_FINISH_LINE);
                         entries.add(ModBlocks.CHECKPOINT);
+                        entries.add(ModItems.TRACK_KIT);
+                        entries.add(ModBlocks.FUEL_PUMP);
+                        entries.add(ModItems.FUEL_CAN);
+                        entries.add(ModItems.MUD_BUCKET);
                         entries.add(ModItems.ENGINE);
                         entries.add(ModItems.TIRE);
                     })

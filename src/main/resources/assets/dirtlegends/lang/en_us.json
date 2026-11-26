@@ -23,5 +23,11 @@
   "item.dirtlegends.dirt_bike_green": "Green Dirt Bike",
   "item.dirtlegends.atv_green": "Green ATV",
   "item.dirtlegends.dirt_bike_yellow": "Yellow Dirt Bike",
-  "item.dirtlegends.atv_yellow": "Yellow ATV"
+  "item.dirtlegends.atv_yellow": "Yellow ATV",
+  "block.dirtlegends.fuel_pump": "Fuel Pump",
+  "block.dirtlegends.mud": "Liquid Mud",
+  "fluid.dirtlegends.mud": "Liquid Mud",
+  "item.dirtlegends.fuel_can": "Fuel Can",
+  "item.dirtlegends.mud_bucket": "Bucket of Liquid Mud",
+  "item.dirtlegends.track_kit": "Track Kit"
 }

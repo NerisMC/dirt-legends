@@ -8,7 +8,13 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import com.dirtlegends.registry.ModFluids;
+import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
+import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry;
+import net.fabricmc.fabric.api.client.render.fluid.v1.SimpleFluidRenderHandler;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.util.Identifier;
 
 public class DirtLegendsClient implements ClientModInitializer {
     @Override
@@ -22,6 +28,11 @@ public class DirtLegendsClient implements ClientModInitializer {
                 context -> new VehicleRenderer<>(context, new AtvModel(context.getPart(AtvModel.LAYER)), 0.8f, "atv"));
 
         HudRenderCallback.EVENT.register(VehicleHud::render);
+
+        // liquid mud: vanilla water textures tinted dark brown
+        FluidRenderHandlerRegistry.INSTANCE.register(ModFluids.STILL_MUD, ModFluids.FLOWING_MUD,
+                new SimpleFluidRenderHandler(Identifier.ofVanilla("block/water_still"), Identifier.ofVanilla("block/water_flow"), 0x5A3B22));
+        BlockRenderLayerMap.INSTANCE.putFluids(RenderLayer.getTranslucent(), ModFluids.STILL_MUD, ModFluids.FLOWING_MUD);
 
         MotoVehicleEntity.crashSender = severity -> {
             if (ClientPlayNetworking.canSend(CrashPayload.ID)) {

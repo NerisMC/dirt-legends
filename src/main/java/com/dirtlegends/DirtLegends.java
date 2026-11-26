@@ -21,11 +21,13 @@ public class DirtLegends implements ModInitializer {
     @Override
     public void onInitialize() {
         ModSounds.init();
+        ModFluids.init();
         ModEntities.init();
         ModBlocks.init();
         ModArmor.init();
         ModItems.init();
         ModItemGroup.init();
+        ModWorldgen.init();
 
         PayloadTypeRegistry.playC2S().register(CrashPayload.ID, CrashPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(CrashPayload.ID, (payload, context) -> {

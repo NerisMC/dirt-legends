@@ -51,6 +51,10 @@ import java.util.function.Consumer;
  */
 public abstract class MotoVehicleEntity extends MobEntity implements JumpingMount {
     private static final TrackedData<Integer> VARIANT = DataTracker.registerData(MotoVehicleEntity.class, TrackedDataHandlerRegistry.INTEGER);
+    private static final TrackedData<Float> FUEL = DataTracker.registerData(MotoVehicleEntity.class, TrackedDataHandlerRegistry.FLOAT);
+    public static final float MAX_FUEL = 100.0f;
+    /** Fuel used per block travelled: a full tank lasts roughly 1,500 blocks. */
+    private static final float FUEL_PER_BLOCK = 0.065f;
     public static final float WHEEL_RADIUS = 0.3125f;
     private static final float DEG = MathHelper.RADIANS_PER_DEGREE;
     private static final double GRAVITY = 0.08;
@@ -100,6 +104,9 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     private int serverAirTicks;
     private double peakY;
     private long lastCrashTick = -1000;
+    private double serverLastX, serverLastZ;
+    private boolean warnedEmpty;
+    private int refuelMessageCooldown;
 
     protected MotoVehicleEntity(EntityType<? extends MotoVehicleEntity> type, World world) {
         super(type, world);
@@ -123,6 +130,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     protected void initDataTracker(DataTracker.Builder builder) {
         super.initDataTracker(builder);
         builder.add(VARIANT, 0);
+        builder.add(FUEL, MAX_FUEL);
     }
 
     public int getVariant() {
@@ -133,10 +141,19 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         this.dataTracker.set(VARIANT, variant);
     }
 
+    public float getFuel() {
+        return this.dataTracker.get(FUEL);
+    }
+
+    public void setFuel(float fuel) {
+        this.dataTracker.set(FUEL, MathHelper.clamp(fuel, 0.0f, MAX_FUEL));
+    }
+
     @Override
     public void writeCustomDataToNbt(NbtCompound nbt) {
         super.writeCustomDataToNbt(nbt);
         nbt.putInt("Variant", getVariant());
+        nbt.putFloat("Fuel", getFuel());
         if (bestLap > 0) nbt.putLong("BestLap", bestLap);
     }
 
@@ -144,6 +161,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     public void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
         setVariant(nbt.getInt("Variant"));
+        if (nbt.contains("Fuel")) setFuel(nbt.getFloat("Fuel"));
         if (nbt.contains("BestLap")) bestLap = nbt.getLong("BestLap");
     }
 
@@ -151,6 +169,18 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
 
     @Override
     public ActionResult interactMob(PlayerEntity player, Hand hand) {
+        ItemStack held = player.getStackInHand(hand);
+        if (held.isOf(ModItems.FUEL_CAN)) {
+            if (getFuel() >= MAX_FUEL - 0.5f) return ActionResult.PASS;
+            if (!this.getWorld().isClient) {
+                setFuel(getFuel() + com.dirtlegends.item.FuelCanItem.FUEL_AMOUNT);
+                held.decrementUnlessCreative(1, player);
+                this.playSound(SoundEvents.ITEM_BUCKET_EMPTY, 1.0f, 0.8f);
+                player.sendMessage(Text.literal("Refueled: " + Math.round(getFuel()) + "%").formatted(Formatting.GREEN), true);
+                warnedEmpty = false;
+            }
+            return ActionResult.success(this.getWorld().isClient);
+        }
         if (player.shouldCancelInteraction() || this.hasPassengers()) {
             return ActionResult.PASS;
         }
@@ -268,6 +298,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
 
         VehicleStats s = getStats();
         float fwdIn = rider.forwardSpeed > 0.01f ? 1.0f : rider.forwardSpeed < -0.01f ? -1.0f : 0.0f;
+        if (fwdIn > 0 && getFuel() <= 0.0f) fwdIn = 0.0f; // out of gas: you can only coast and brake
         float sideIn = rider.sidewaysSpeed > 0.01f ? 1.0f : rider.sidewaysSpeed < -0.01f ? -1.0f : 0.0f; // + is left
         throttle = fwdIn;
         if (crashCooldown > 0) crashCooldown--;
@@ -508,6 +539,12 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     private void serverTick() {
         this.fallDistance = 0.0f;
         if (messageHold > 0) messageHold--;
+        if (refuelMessageCooldown > 0) refuelMessageCooldown--;
+        double mx = getX() - serverLastX, mz = getZ() - serverLastZ;
+        double moved = this.age > 1 ? Math.min(2.0, Math.sqrt(mx * mx + mz * mz)) : 0.0;
+        serverLastX = getX();
+        serverLastZ = getZ();
+        if (this.age % 5 == 0) tickFuelPumps();
         if (!(this.getControllingPassenger() instanceof ServerPlayerEntity rider)) {
             serverAirTicks = 0;
             return;
@@ -533,7 +570,41 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
             serverAirTicks = 0;
         }
 
+        // burn fuel while riding
+        if (getFuel() > 0.0f) {
+            setFuel(getFuel() - (float) moved * FUEL_PER_BLOCK - 0.0005f);
+            if (getFuel() <= 0.0f && !warnedEmpty) {
+                warnedEmpty = true;
+                showMessage(rider, Text.literal("OUT OF FUEL! Find a gas station or use a Fuel Can").formatted(Formatting.RED, Formatting.BOLD), 60);
+            } else if (getFuel() < 15.0f && getFuel() + (float) moved * FUEL_PER_BLOCK + 0.0005f >= 15.0f) {
+                showMessage(rider, Text.literal("Low fuel!").formatted(Formatting.GOLD, Formatting.BOLD), 40);
+            }
+        }
+
         tickRaceTiming(rider);
+    }
+
+    /** Parked within 2 blocks of a Fuel Pump: fill up (about 5 seconds for a full tank). */
+    private void tickFuelPumps() {
+        if (getFuel() >= MAX_FUEL) return;
+        BlockPos base = this.getBlockPos();
+        boolean nearPump = false;
+        for (BlockPos p : BlockPos.iterate(base.add(-2, -1, -2), base.add(2, 2, 2))) {
+            if (this.getWorld().getBlockState(p).isOf(com.dirtlegends.registry.ModBlocks.FUEL_PUMP)) {
+                nearPump = true;
+                break;
+            }
+        }
+        if (!nearPump) return;
+        setFuel(getFuel() + 5.0f);
+        warnedEmpty = false;
+        if (this.getControllingPassenger() instanceof ServerPlayerEntity rider && refuelMessageCooldown == 0) {
+            showMessage(rider, Text.literal("REFUELING  " + Math.round(getFuel()) + "%").formatted(Formatting.YELLOW, Formatting.BOLD), 6);
+            refuelMessageCooldown = 5;
+        }
+        if (this.age % 20 == 0) {
+            this.playSound(SoundEvents.BLOCK_BREWING_STAND_BREW, 0.5f, 1.4f);
+        }
     }
 
     /** Called on the server when the rider's client reports a crash. */

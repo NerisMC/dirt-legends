@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "TTT",
+    "TST",
+    "TKT"
+  ],
+  "key": {
+    "T": {
+      "item": "dirtlegends:track_dirt"
+    },
+    "S": {
+      "item": "dirtlegends:start_finish_line"
+    },
+    "K": {
+      "item": "dirtlegends:kicker_ramp"
+    }
+  },
+  "result": {
+    "id": "dirtlegends:track_kit",
+    "count": 1
+  }
+}

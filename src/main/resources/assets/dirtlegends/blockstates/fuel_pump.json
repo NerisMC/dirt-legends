@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "dirtlegends:block/fuel_pump"
+    },
+    "facing=east": {
+      "model": "dirtlegends:block/fuel_pump",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "dirtlegends:block/fuel_pump",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "dirtlegends:block/fuel_pump",
+      "y": 270
+    }
+  }
+}

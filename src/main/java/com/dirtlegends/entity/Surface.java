@@ -22,11 +22,13 @@ public record Surface(float grip, float top, float accel) {
     public static final Surface SAND = new Surface(0.45f, 0.70f, 0.60f);
     public static final Surface MUD = new Surface(0.50f, 0.55f, 0.50f);
     public static final Surface SNOW = new Surface(0.35f, 0.70f, 0.55f);
+    public static final Surface MUD_LIQUID = new Surface(0.30f, 0.40f, 0.35f);
     public static final Surface ICE = new Surface(0.06f, 1.00f, 0.15f);
 
     public static Surface of(MotoVehicleEntity vehicle) {
         World world = vehicle.getWorld();
         BlockState feet = world.getBlockState(vehicle.getBlockPos());
+        if (world.getFluidState(vehicle.getBlockPos()).getFluid() instanceof com.dirtlegends.fluid.MudFluid) return MUD_LIQUID;
         if (feet.isOf(Blocks.SNOW)) return SNOW;
         if (isTrack(feet)) return TRACK;
         BlockState s = world.getBlockState(BlockPos.ofFloored(vehicle.getX(), vehicle.getY() - 0.2, vehicle.getZ()));

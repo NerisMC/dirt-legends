@@ -2,11 +2,14 @@ package com.dirtlegends.registry;
 
 import com.dirtlegends.DirtLegends;
 import com.dirtlegends.block.DirtRampBlock;
+import com.dirtlegends.block.FuelPumpBlock;
 import com.dirtlegends.block.KickerRampBlock;
+import com.dirtlegends.block.MudBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.MapColor;
 import net.minecraft.block.SlabBlock;
+import net.minecraft.block.piston.PistonBehavior;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
@@ -23,6 +26,14 @@ public final class ModBlocks {
             .mapColor(MapColor.WHITE).strength(0.8f).sounds(BlockSoundGroup.ROOTED_DIRT)));
     public static final Block CHECKPOINT = register("checkpoint", new Block(AbstractBlock.Settings.create()
             .mapColor(MapColor.YELLOW).strength(0.8f).sounds(BlockSoundGroup.ROOTED_DIRT)));
+
+    public static final Block FUEL_PUMP = register("fuel_pump", new FuelPumpBlock(AbstractBlock.Settings.create()
+            .mapColor(MapColor.RED).strength(2.0f).sounds(BlockSoundGroup.METAL).nonOpaque().requiresTool()));
+    /** The liquid mud block (no item; you carry it in a Mud Bucket). */
+    public static final Block MUD = Registry.register(Registries.BLOCK, DirtLegends.id("mud"),
+            new MudBlock(ModFluids.STILL_MUD, AbstractBlock.Settings.create().mapColor(MapColor.BROWN).replaceable()
+                    .noCollision().strength(100.0f).pistonBehavior(PistonBehavior.DESTROY).dropsNothing().liquid()
+                    .sounds(BlockSoundGroup.INTENTIONALLY_EMPTY)));
 
     private ModBlocks() {
     }
