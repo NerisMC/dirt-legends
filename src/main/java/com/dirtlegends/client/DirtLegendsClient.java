@@ -15,6 +15,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.color.block.BlockTintSources;
 import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.client.resources.model.sprite.Material;
@@ -38,7 +42,11 @@ public class DirtLegendsClient implements ClientModInitializer {
         EntityRendererRegistry.register(ModEntities.VENDOR,
                 ctx -> new NpcRenderer<>(ctx, "vendor", "vendor", 2, VendorEntity::getKind));
 
+        HudElementRegistry.addFirst(DirtLegends.id("helmet_visor"), HelmetVisor::render);
         HudElementRegistry.addLast(DirtLegends.id("vehicle_hud"), VehicleHud::render);
+        HelmetVisor.tearOffKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.dirtlegends.tear_off",
+                InputConstants.KEY_V, KeyMapping.Category.GAMEPLAY));
+        ClientTickEvents.END_CLIENT_TICK.register(HelmetVisor::tick);
 
         // liquid mud: vanilla water textures tinted dark brown, drawn translucent
         FluidRenderingRegistry.register(ModFluids.STILL_MUD, ModFluids.FLOWING_MUD, new FluidModel.Unbaked(

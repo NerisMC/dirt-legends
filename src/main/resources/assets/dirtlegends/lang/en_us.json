@@ -38,5 +38,6 @@
   "item.dirtlegends.energy_drink": "Nitro Energy Drink",
   "entity.dirtlegends.spectator": "Fan",
   "entity.dirtlegends.racer": "Rival Racer",
-  "entity.dirtlegends.vendor": "Vendor"
+  "entity.dirtlegends.vendor": "Vendor",
+  "key.dirtlegends.tear_off": "Helmet Tear-Off (clean goggles)"
 }

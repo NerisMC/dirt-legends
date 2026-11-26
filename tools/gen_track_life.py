@@ -270,7 +270,78 @@ def data():
     lang[f"entity.{MOD}.spectator"] = "Fan"
     lang[f"entity.{MOD}.racer"] = "Rival Racer"
     lang[f"entity.{MOD}.vendor"] = "Vendor"
+    lang[f"key.{MOD}.tear_off"] = "Helmet Tear-Off (clean goggles)"
     wj(lp, lang)
+
+
+# ------------------------------------------------------------------ helmet POV (goggle frame, dirt splats, water drops)
+def visor():
+    import numpy as np
+    W, H, S = 512, 288, 3                      # supersampled for smooth edges
+    ys, xs = np.mgrid[0:H * S, 0:W * S].astype(np.float32) / S
+    # signed distance to the goggle lens: a rounded rectangle
+    cx, cy, hw, hh, rad = 256.0, 148.0, 240.0, 128.0, 74.0
+    qx = np.abs(xs - cx) - (hw - rad)
+    qy = np.abs(ys - cy) - (hh - rad)
+    outside = np.sqrt(np.maximum(qx, 0) ** 2 + np.maximum(qy, 0) ** 2) + np.minimum(np.maximum(qx, qy), 0) - rad
+    # nose piece pushes up into the bottom of the lens
+    nose = ((xs - 256.0) / 34.0) ** 2 + ((ys - 312.0) / 80.0) ** 2 - 1.0
+    lens = (outside < 0) & (nose > 0)
+    # helmet peak (out of focus) across the top
+    peak = ys < 14.0 + 0.0003 * (xs - 256.0) ** 2
+    img = np.zeros((H * S, W * S, 4), np.float32)
+    # padded frame: dark foam with a soft highlight
+    shade = 18 + 10 * np.clip(1.0 - np.abs(outside) / 40.0, 0, 1)
+    img[..., 0] = shade; img[..., 1] = shade; img[..., 2] = shade + 2; img[..., 3] = 255
+    # coloured goggle rim just around the lens
+    rim = (~lens) & (np.abs(outside) < 5.0) & (nose > -0.25)
+    img[rim] = [235, 110, 20, 255]
+    # lens: clear in the middle, darker toward the edges
+    edge = np.clip(1.0 - (-outside) / 34.0, 0, 1)
+    img[lens, 0:3] = 6
+    img[lens, 3] = (edge[lens] ** 2) * 120
+    # helmet peak, red with stripes, slightly see-through at its edge
+    pk = peak & ~((~lens) & ~peak)
+    img[peak, 0] = 150; img[peak, 1] = 24; img[peak, 2] = 24
+    stripe = peak & (np.abs(((xs - 256.0) % 64.0) - 32.0) < 4.0)
+    img[stripe, 0:3] = 200
+    img[peak, 3] = 235
+    from PIL import ImageFilter
+    pk_layer = np.zeros_like(img)
+    pk_layer[peak] = img[peak]
+    img[peak & lens] = 0
+    img[peak & ~lens, 0:3] = 18
+    base = Image.fromarray(img.clip(0, 255).astype(np.uint8), "RGBA")
+    blur = Image.fromarray(pk_layer.clip(0, 255).astype(np.uint8), "RGBA").filter(ImageFilter.GaussianBlur(6 * S))
+    base.alpha_composite(blur)
+    out = base.resize((W, H), Image.LANCZOS)
+    out.save(mk(f"{A}/textures/gui/helmet_visor.png"))
+
+    # splats: white blobs (tinted in game) with a few flicks
+    for k in range(4):
+        r = random.Random(77 + k)
+        n = 32 * 4
+        yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+        field = np.zeros((n, n), np.float32)
+        blobs = [(n / 2, n / 2, n * 0.22)] + [(n / 2 + r.uniform(-1, 1) * n * 0.22, n / 2 + r.uniform(-1, 1) * n * 0.22,
+                                                  n * r.uniform(0.05, 0.13)) for _ in range(5 + k)]
+        for bx, by, br in blobs:
+            field += br * br / ((xx - bx) ** 2 + (yy - by) ** 2 + 1.0)
+        alpha = np.clip((field - 1.0) * 3.0, 0, 1) * 255
+        tone = 205 + 50 * np.clip(field / 6.0, 0, 1)            # thicker middle is brighter (gets tinted darker by colour)
+        a = np.dstack([tone, tone, tone, alpha]).astype(np.uint8)
+        Image.fromarray(a, "RGBA").resize((32, 32), Image.LANCZOS).save(mk(f"{A}/textures/gui/splat_{k}.png"))
+
+    # water drop: clear with a bright rim and a highlight
+    n = 128
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d = np.sqrt(((xx - 64) / 46.0) ** 2 + ((yy - 70) / 50.0) ** 2)
+    alpha = np.where(d < 1.0, 60 + 160 * np.clip((d - 0.6) / 0.4, 0, 1), 0)
+    hl = np.sqrt((xx - 48) ** 2 + (yy - 50) ** 2) < 10
+    tone = np.where(hl, 255, 225)
+    alpha = np.where(hl & (d < 1.0), 230, alpha)
+    a = np.dstack([tone, tone, tone, alpha]).astype(np.uint8)
+    Image.fromarray(a, "RGBA").resize((32, 32), Image.LANCZOS).save(mk(f"{A}/textures/gui/drop.png"))
 
 
 def main():
@@ -281,6 +352,7 @@ def main():
     vendor(0)
     vendor(1)
     food()
+    visor()
     data()
     print("track life assets done")
 
