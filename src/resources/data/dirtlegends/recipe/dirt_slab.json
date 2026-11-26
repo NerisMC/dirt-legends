@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "TTT"
+  ],
+  "key": {
+    "T": {
+      "item": "dirtlegends:track_dirt"
+    }
+  },
+  "result": {
+    "id": "dirtlegends:dirt_slab",
+    "count": 6
+  }
+}
