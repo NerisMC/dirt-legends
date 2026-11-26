@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "T  ",
+    "TT ",
+    "TTT"
+  ],
+  "key": {
+    "T": {
+      "item": "dirtlegends:track_dirt"
+    }
+  },
+  "result": {
+    "id": "dirtlegends:dirt_ramp",
+    "count": 4
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "WBW",
+    "TTT"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:white_wool"
+    },
+    "B": {
+      "item": "minecraft:black_wool"
+    },
+    "T": {
+      "item": "dirtlegends:track_dirt"
+    }
+  },
+  "result": {
+    "id": "dirtlegends:start_finish_line",
+    "count": 3
+  }
+}

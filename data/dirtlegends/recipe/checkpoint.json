@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "YBY",
+    "TTT"
+  ],
+  "key": {
+    "Y": {
+      "item": "minecraft:yellow_wool"
+    },
+    "B": {
+      "item": "minecraft:black_wool"
+    },
+    "T": {
+      "item": "dirtlegends:track_dirt"
+    }
+  },
+  "result": {
+    "id": "dirtlegends:checkpoint",
+    "count": 3
+  }
+}
