@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "dirtlegends:block/kicker_ramp"
+    },
+    "facing=east": {
+      "model": "dirtlegends:block/kicker_ramp",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "dirtlegends:block/kicker_ramp",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "dirtlegends:block/kicker_ramp",
+      "y": 270
+    }
+  }
+}
