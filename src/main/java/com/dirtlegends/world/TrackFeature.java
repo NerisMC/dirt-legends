@@ -22,7 +22,7 @@ public class TrackFeature extends Feature<NoneFeatureConfiguration> {
         int z = (origin.getZ() & ~15) + 8;
         int ground = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
         BlockPos center = new BlockPos(x, ground, z);
-        if (!world.getFluidState(center).isEmpty() || !world.getBlockState(center).isSolidRender(world, center)) {
+        if (!world.getFluidState(center).isEmpty() || !world.getBlockState(center).isSolidRender()) {
             return false; // don't build on water or on top of plants/trees
         }
         // skip very hilly spots so the track doesn't cut through mountains
