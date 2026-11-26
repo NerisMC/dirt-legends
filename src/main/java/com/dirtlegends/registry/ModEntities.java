@@ -5,24 +5,24 @@ import com.dirtlegends.entity.AtvEntity;
 import com.dirtlegends.entity.DirtBikeEntity;
 import com.dirtlegends.entity.MotoVehicleEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnGroup;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 
 public final class ModEntities {
-    public static final EntityType<DirtBikeEntity> DIRT_BIKE = Registry.register(Registries.ENTITY_TYPE, DirtLegends.id("dirt_bike"),
-            EntityType.Builder.create(DirtBikeEntity::new, SpawnGroup.MISC)
-                    .dimensions(1.0f, 1.1f)
+    public static final EntityType<DirtBikeEntity> DIRT_BIKE = Registry.register(BuiltInRegistries.ENTITY_TYPE, DirtLegends.id("dirt_bike"),
+            EntityType.Builder.of(DirtBikeEntity::new, MobCategory.MISC)
+                    .sized(1.0f, 1.1f)
                     .passengerAttachments(0.95f)
-                    .maxTrackingRange(10)
+                    .clientTrackingRange(10)
                     .build("dirt_bike"));
 
-    public static final EntityType<AtvEntity> ATV = Registry.register(Registries.ENTITY_TYPE, DirtLegends.id("atv"),
-            EntityType.Builder.create(AtvEntity::new, SpawnGroup.MISC)
-                    .dimensions(1.3f, 1.0f)
+    public static final EntityType<AtvEntity> ATV = Registry.register(BuiltInRegistries.ENTITY_TYPE, DirtLegends.id("atv"),
+            EntityType.Builder.of(AtvEntity::new, MobCategory.MISC)
+                    .sized(1.3f, 1.0f)
                     .passengerAttachments(0.85f)
-                    .maxTrackingRange(10)
+                    .clientTrackingRange(10)
                     .build("atv"));
 
     private ModEntities() {

@@ -1,22 +1,21 @@
 package com.dirtlegends.registry;
 
 import com.dirtlegends.DirtLegends;
-import net.minecraft.item.ArmorItem;
-import net.minecraft.item.ArmorMaterial;
-import net.minecraft.item.Items;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Util;
-
 import java.util.EnumMap;
 import java.util.List;
+import net.minecraft.Util;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ArmorMaterial;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 
 public final class ModArmor {
     /** Between leather and chainmail on paper; the real benefit is crash protection on a vehicle. */
-    public static final RegistryEntry<ArmorMaterial> MOTOCROSS = Registry.registerReference(Registries.ARMOR_MATERIAL,
+    public static final Holder<ArmorMaterial> MOTOCROSS = Registry.registerForHolder(BuiltInRegistries.ARMOR_MATERIAL,
             DirtLegends.id("motocross"),
             new ArmorMaterial(
                     Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
@@ -27,8 +26,8 @@ public final class ModArmor {
                         map.put(ArmorItem.Type.BODY, 4);
                     }),
                     15,
-                    SoundEvents.ITEM_ARMOR_EQUIP_LEATHER,
-                    () -> Ingredient.ofItems(Items.LEATHER),
+                    SoundEvents.ARMOR_EQUIP_LEATHER,
+                    () -> Ingredient.of(Items.LEATHER),
                     List.of(new ArmorMaterial.Layer(DirtLegends.id("motocross"))),
                     0.0f,
                     0.0f));

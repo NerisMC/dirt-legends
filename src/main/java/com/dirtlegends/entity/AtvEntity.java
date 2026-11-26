@@ -1,12 +1,12 @@
 package com.dirtlegends.entity;
 
 import com.dirtlegends.registry.ModItems;
-import net.minecraft.entity.EntityType;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 public class AtvEntity extends MotoVehicleEntity {
-    public AtvEntity(EntityType<? extends MotoVehicleEntity> type, World world) {
+    public AtvEntity(EntityType<? extends MotoVehicleEntity> type, Level world) {
         super(type, world);
     }
 

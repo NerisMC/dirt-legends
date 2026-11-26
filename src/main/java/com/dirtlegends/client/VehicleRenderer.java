@@ -3,24 +3,24 @@ package com.dirtlegends.client;
 import com.dirtlegends.DirtLegends;
 import com.dirtlegends.entity.MotoVehicleEntity;
 import com.dirtlegends.registry.ModItems;
-import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.render.entity.MobEntityRenderer;
-import net.minecraft.client.render.entity.model.EntityModel;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.resources.ResourceLocation;
 
-public class VehicleRenderer<M extends EntityModel<MotoVehicleEntity>> extends MobEntityRenderer<MotoVehicleEntity, M> {
-    private final Identifier[] textures;
+public class VehicleRenderer<M extends EntityModel<MotoVehicleEntity>> extends MobRenderer<MotoVehicleEntity, M> {
+    private final ResourceLocation[] textures;
 
-    public VehicleRenderer(EntityRendererFactory.Context context, M model, float shadowRadius, String name) {
+    public VehicleRenderer(EntityRendererProvider.Context context, M model, float shadowRadius, String name) {
         super(context, model, shadowRadius);
-        textures = new Identifier[ModItems.COLORS.length];
+        textures = new ResourceLocation[ModItems.COLORS.length];
         for (int i = 0; i < textures.length; i++) {
             textures[i] = DirtLegends.id("textures/entity/" + name + "_" + ModItems.COLORS[i] + ".png");
         }
     }
 
     @Override
-    public Identifier getTexture(MotoVehicleEntity entity) {
+    public ResourceLocation getTexture(MotoVehicleEntity entity) {
         return textures[entity.getVariant()];
     }
 }

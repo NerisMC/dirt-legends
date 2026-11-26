@@ -1,49 +1,48 @@
 package com.dirtlegends.item;
 
 import com.dirtlegends.entity.MotoVehicleEntity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-
 import java.util.function.Supplier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
 
 /** Right-click the ground to park the vehicle there, facing the way you look. */
 public class VehicleItem extends Item {
     private final Supplier<? extends EntityType<? extends MotoVehicleEntity>> type;
     private final int variant;
 
-    public VehicleItem(Settings settings, Supplier<? extends EntityType<? extends MotoVehicleEntity>> type, int variant) {
+    public VehicleItem(Properties settings, Supplier<? extends EntityType<? extends MotoVehicleEntity>> type, int variant) {
         super(settings);
         this.type = type;
         this.variant = variant;
     }
 
     @Override
-    public ActionResult useOnBlock(ItemUsageContext context) {
-        World world = context.getWorld();
-        if (!(world instanceof ServerWorld serverWorld)) {
-            return ActionResult.SUCCESS;
+    public InteractionResult useOn(UseOnContext context) {
+        Level world = context.getLevel();
+        if (!(world instanceof ServerLevel serverWorld)) {
+            return InteractionResult.SUCCESS;
         }
-        BlockPos pos = context.getBlockPos().offset(context.getSide());
+        BlockPos pos = context.getClickedPos().relative(context.getClickedFace());
         MotoVehicleEntity vehicle = type.get().create(serverWorld);
         if (vehicle == null) {
-            return ActionResult.FAIL;
+            return InteractionResult.FAIL;
         }
-        float yaw = context.getPlayerYaw();
-        vehicle.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
-        vehicle.setHeadYaw(yaw);
-        vehicle.setBodyYaw(yaw);
+        float yaw = context.getRotation();
+        vehicle.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
+        vehicle.setYHeadRot(yaw);
+        vehicle.setYBodyRot(yaw);
         vehicle.setVariant(variant);
-        vehicle.setPersistent();
-        if (!serverWorld.isSpaceEmpty(vehicle)) {
-            return ActionResult.FAIL;
+        vehicle.setPersistenceRequired();
+        if (!serverWorld.noCollision(vehicle)) {
+            return InteractionResult.FAIL;
         }
-        serverWorld.spawnEntity(vehicle);
-        context.getStack().decrementUnlessCreative(1, context.getPlayer());
-        return ActionResult.CONSUME;
+        serverWorld.addFreshEntity(vehicle);
+        context.getItemInHand().consume(1, context.getPlayer());
+        return InteractionResult.CONSUME;
     }
 }

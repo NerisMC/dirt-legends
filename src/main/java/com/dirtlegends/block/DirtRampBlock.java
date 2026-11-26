@@ -1,11 +1,11 @@
 package com.dirtlegends.block;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.StairsBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 /** Stair-shaped dirt ramp. Hit it fast and the vehicle pops into the air. */
-public class DirtRampBlock extends StairsBlock {
-    public DirtRampBlock(BlockState baseBlockState, Settings settings) {
+public class DirtRampBlock extends StairBlock {
+    public DirtRampBlock(BlockState baseBlockState, Properties settings) {
         super(baseBlockState, settings);
     }
 }

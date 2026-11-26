@@ -2,42 +2,42 @@ package com.dirtlegends.entity;
 
 import com.dirtlegends.block.KickerRampBlock;
 import com.dirtlegends.registry.ModItems;
-import net.minecraft.block.BlockRenderType;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.JumpingMount;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.DefaultAttributeContainer;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.data.DataTracker;
-import net.minecraft.entity.data.TrackedData;
-import net.minecraft.entity.data.TrackedDataHandlerRegistry;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.particle.BlockStateParticleEffect;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.tag.DamageTypeTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PlayerRideableJumping;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Shared code for every rideable vehicle.
@@ -49,15 +49,15 @@ import java.util.function.Consumer;
  *  - 5-speed gearbox: strong pull in low gears, less in high gears
  *  - air pitch control and landing / wall-impact crashes
  */
-public abstract class MotoVehicleEntity extends MobEntity implements JumpingMount {
-    private static final TrackedData<Integer> VARIANT = DataTracker.registerData(MotoVehicleEntity.class, TrackedDataHandlerRegistry.INTEGER);
-    private static final TrackedData<Float> FUEL = DataTracker.registerData(MotoVehicleEntity.class, TrackedDataHandlerRegistry.FLOAT);
+public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJumping {
+    private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(MotoVehicleEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> FUEL = SynchedEntityData.defineId(MotoVehicleEntity.class, EntityDataSerializers.FLOAT);
     public static final float MAX_FUEL = 100.0f;
     /** Fuel used per block travelled: a full tank lasts roughly 1,500 blocks. */
     private static final float FUEL_PER_BLOCK = 0.065f;
     public static final float WHEEL_RADIUS = 0.3125f;
-    private static final float DEG = MathHelper.RADIANS_PER_DEGREE;
-    private static final double GRAVITY = 0.08;
+    private static final float DEG = Mth.DEG_TO_RAD;
+    private static final double DEFAULT_BASE_GRAVITY = 0.08;
     /** Fraction of top speed at which each gear starts (gear 1..5). */
     private static final float[] GEARS = {0.0f, 0.2f, 0.38f, 0.56f, 0.76f};
 
@@ -67,7 +67,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     public static Consumer<MotoVehicleEntity> engineSoundStarter = vehicle -> { };
 
     // ---- physics, only meaningful on the side that controls movement (the rider's client)
-    private float speed;
+    private float flyDist;
     private double velX, velZ;
     private float steer;
     private float throttle;
@@ -108,7 +108,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     private boolean warnedEmpty;
     private int refuelMessageCooldown;
 
-    protected MotoVehicleEntity(EntityType<? extends MotoVehicleEntity> type, World world) {
+    protected MotoVehicleEntity(EntityType<? extends MotoVehicleEntity> type, Level world) {
         super(type, world);
     }
 
@@ -116,50 +116,50 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
 
     protected abstract ItemStack getVariantStack(int variant);
 
-    public static DefaultAttributeContainer.Builder createVehicleAttributes() {
+    public static AttributeSupplier.Builder createVehicleAttributes() {
         // Max health 1 keeps the vanilla HUD showing your food bar instead of "mount hearts".
-        return MobEntity.createMobAttributes()
-                .add(EntityAttributes.GENERIC_MAX_HEALTH, 1.0)
-                .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.1)
-                .add(EntityAttributes.GENERIC_STEP_HEIGHT, 1.0);
+        return Mob.createMobAttributes()
+                .add(Attributes.MAX_HEALTH, 1.0)
+                .add(Attributes.MOVEMENT_SPEED, 0.1)
+                .add(Attributes.STEP_HEIGHT, 1.0);
     }
 
     // ------------------------------------------------------------------ data
 
     @Override
-    protected void initDataTracker(DataTracker.Builder builder) {
-        super.initDataTracker(builder);
-        builder.add(VARIANT, 0);
-        builder.add(FUEL, MAX_FUEL);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(VARIANT, 0);
+        builder.define(FUEL, MAX_FUEL);
     }
 
     public int getVariant() {
-        return MathHelper.clamp(this.dataTracker.get(VARIANT), 0, ModItems.COLORS.length - 1);
+        return Mth.clamp(this.entityData.get(VARIANT), 0, ModItems.COLORS.length - 1);
     }
 
     public void setVariant(int variant) {
-        this.dataTracker.set(VARIANT, variant);
+        this.entityData.set(VARIANT, variant);
     }
 
     public float getFuel() {
-        return this.dataTracker.get(FUEL);
+        return this.entityData.get(FUEL);
     }
 
     public void setFuel(float fuel) {
-        this.dataTracker.set(FUEL, MathHelper.clamp(fuel, 0.0f, MAX_FUEL));
+        this.entityData.set(FUEL, Mth.clamp(fuel, 0.0f, MAX_FUEL));
     }
 
     @Override
-    public void writeCustomDataToNbt(NbtCompound nbt) {
-        super.writeCustomDataToNbt(nbt);
+    public void addAdditionalSaveData(CompoundTag nbt) {
+        super.addAdditionalSaveData(nbt);
         nbt.putInt("Variant", getVariant());
         nbt.putFloat("Fuel", getFuel());
         if (bestLap > 0) nbt.putLong("BestLap", bestLap);
     }
 
     @Override
-    public void readCustomDataFromNbt(NbtCompound nbt) {
-        super.readCustomDataFromNbt(nbt);
+    public void readAdditionalSaveData(CompoundTag nbt) {
+        super.readAdditionalSaveData(nbt);
         setVariant(nbt.getInt("Variant"));
         if (nbt.contains("Fuel")) setFuel(nbt.getFloat("Fuel"));
         if (nbt.contains("BestLap")) bestLap = nbt.getLong("BestLap");
@@ -168,60 +168,60 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     // ------------------------------------------------------------------ basic vehicle behaviour
 
     @Override
-    public ActionResult interactMob(PlayerEntity player, Hand hand) {
-        ItemStack held = player.getStackInHand(hand);
-        if (held.isOf(ModItems.FUEL_CAN)) {
-            if (getFuel() >= MAX_FUEL - 0.5f) return ActionResult.PASS;
-            if (!this.getWorld().isClient) {
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (held.is(ModItems.FUEL_CAN)) {
+            if (getFuel() >= MAX_FUEL - 0.5f) return InteractionResult.PASS;
+            if (!this.level().isClientSide) {
                 setFuel(getFuel() + com.dirtlegends.item.FuelCanItem.FUEL_AMOUNT);
-                held.decrementUnlessCreative(1, player);
-                this.playSound(SoundEvents.ITEM_BUCKET_EMPTY, 1.0f, 0.8f);
-                player.sendMessage(Text.literal("Refueled: " + Math.round(getFuel()) + "%").formatted(Formatting.GREEN), true);
+                held.consume(1, player);
+                this.playSound(SoundEvents.BUCKET_EMPTY, 1.0f, 0.8f);
+                player.displayClientMessage(Component.literal("Refueled: " + Math.round(getFuel()) + "%").withStyle(ChatFormatting.GREEN), true);
                 warnedEmpty = false;
             }
-            return ActionResult.success(this.getWorld().isClient);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
-        if (player.shouldCancelInteraction() || this.hasPassengers()) {
-            return ActionResult.PASS;
+        if (player.isSecondaryUseActive() || this.isVehicle()) {
+            return InteractionResult.PASS;
         }
-        if (!this.getWorld().isClient) {
+        if (!this.level().isClientSide) {
             player.startRiding(this);
         }
-        return ActionResult.success(this.getWorld().isClient);
+        return InteractionResult.sidedSuccess(this.level().isClientSide);
     }
 
     @Nullable
     @Override
     public LivingEntity getControllingPassenger() {
-        return this.getFirstPassenger() instanceof PlayerEntity player ? player : null;
+        return this.getFirstPassenger() instanceof Player player ? player : null;
     }
 
     @Override
-    public boolean damage(DamageSource source, float amount) {
-        if (source.getAttacker() instanceof PlayerEntity player) {
-            if (this.getWorld().isClient || this.isRemoved()) return true;
+    public boolean hurt(DamageSource source, float amount) {
+        if (source.getEntity() instanceof Player player) {
+            if (this.level().isClientSide || this.isRemoved()) return true;
             if (this.hasPassenger(player)) return false;
-            if (!player.getAbilities().creativeMode) {
-                this.dropStack(getVariantStack(getVariant()));
+            if (!player.getAbilities().instabuild) {
+                this.spawnAtLocation(getVariantStack(getVariant()));
             }
-            this.playSound(SoundEvents.ENTITY_ITEM_BREAK, 0.8f, 0.8f);
-            this.removeAllPassengers();
+            this.playSound(SoundEvents.ITEM_BREAK, 0.8f, 0.8f);
+            this.ejectPassengers();
             this.discard();
             return true;
         }
-        if (source.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-            return super.damage(source, amount);
+        if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            return super.hurt(source, amount);
         }
         return false; // fire, cactus, mobs, falling etc. don't wreck the vehicle
     }
 
     @Override
-    public boolean handleFallDamage(float fallDistance, float damageMultiplier, DamageSource damageSource) {
+    public boolean causeFallDamage(float fallDistance, float damageMultiplier, DamageSource damageSource) {
         return false; // hard landings are handled in serverTick()
     }
 
     @Override
-    public ItemStack getPickBlockStack() {
+    public ItemStack getPickResult() {
         return getVariantStack(getVariant());
     }
 
@@ -231,7 +231,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     }
 
     @Override
-    public boolean canImmediatelyDespawn(double distanceSquared) {
+    public boolean removeWhenFarAway(double distanceSquared) {
         return false;
     }
 
@@ -241,27 +241,27 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     }
 
     @Override
-    protected void updatePassengerPosition(Entity passenger, Entity.PositionUpdater positionUpdater) {
-        super.updatePassengerPosition(passenger, positionUpdater);
+    protected void positionRider(Entity passenger, Entity.MoveFunction positionUpdater) {
+        super.positionRider(passenger, positionUpdater);
         if (passenger instanceof LivingEntity living) {
-            living.bodyYaw = this.getYaw();
+            living.yBodyRot = this.getYRot();
         }
     }
 
     @Override
-    public void onPassengerLookAround(Entity passenger) {
-        passenger.setBodyYaw(this.getYaw());
-        float f = MathHelper.wrapDegrees(passenger.getYaw() - this.getYaw());
-        float g = MathHelper.clamp(f, -105.0f, 105.0f);
-        passenger.prevYaw += g - f;
-        passenger.setYaw(passenger.getYaw() + g - f);
-        passenger.setHeadYaw(passenger.getYaw());
+    public void onPassengerTurned(Entity passenger) {
+        passenger.setYBodyRot(this.getYRot());
+        float f = Mth.wrapDegrees(passenger.getYRot() - this.getYRot());
+        float g = Mth.clamp(f, -105.0f, 105.0f);
+        passenger.yRotO += g - f;
+        passenger.setYRot(passenger.getYRot() + g - f);
+        passenger.setYHeadRot(passenger.getYRot());
     }
 
     // ------------------------------------------------------------------ jump bar = suspension preload
 
     @Override
-    public void setJumpStrength(int strength) {
+    public void onPlayerJump(int strength) {
         if (strength <= 0) return;
         jumpCharge = strength >= 90 ? 1.0f : 0.35f + 0.65f * strength / 90.0f;
     }
@@ -272,135 +272,135 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     }
 
     @Override
-    public void startJumping(int height) {
+    public void handleStartJump(int height) {
     }
 
     @Override
-    public void stopJumping() {
+    public void handleStopJump() {
     }
 
     // ------------------------------------------------------------------ riding physics
 
     @Override
-    protected Vec3d getControlledMovementInput(PlayerEntity controllingPlayer, Vec3d movementInput) {
-        return Vec3d.ZERO; // we set the velocity ourselves in tickControlled
+    protected Vec3 getRiddenInput(Player controllingPlayer, Vec3 movementInput) {
+        return Vec3.ZERO; // we set the velocity ourselves in tickControlled
     }
 
     @Override
-    protected float getSaddledSpeed(PlayerEntity controllingPlayer) {
+    protected float getRiddenSpeed(Player controllingPlayer) {
         return 0.1f;
     }
 
     @Override
-    protected void tickControlled(PlayerEntity rider, Vec3d movementInput) {
-        super.tickControlled(rider, movementInput);
-        if (!this.isLogicalSideForUpdatingMovement()) return;
+    protected void tickRidden(Player rider, Vec3 movementInput) {
+        super.tickRidden(rider, movementInput);
+        if (!this.isControlledByLocalInstance()) return;
 
         VehicleStats s = getStats();
-        float fwdIn = rider.forwardSpeed > 0.01f ? 1.0f : rider.forwardSpeed < -0.01f ? -1.0f : 0.0f;
+        float fwdIn = rider.zza > 0.01f ? 1.0f : rider.zza < -0.01f ? -1.0f : 0.0f;
         if (fwdIn > 0 && getFuel() <= 0.0f) fwdIn = 0.0f; // out of gas: you can only coast and brake
-        float sideIn = rider.sidewaysSpeed > 0.01f ? 1.0f : rider.sidewaysSpeed < -0.01f ? -1.0f : 0.0f; // + is left
+        float sideIn = rider.xxa > 0.01f ? 1.0f : rider.xxa < -0.01f ? -1.0f : 0.0f; // + is left
         throttle = fwdIn;
         if (crashCooldown > 0) crashCooldown--;
 
-        boolean onGround = this.isOnGround();
+        boolean onGround = this.onGround();
         double movedX = getX() - lastControlX, movedZ = getZ() - lastControlZ;
         double moved = Math.sqrt(movedX * movedX + movedZ * movedZ);
         double climbed = getY() - lastControlY;
         Surface surf = Surface.of(this);
         float top = s.maxSpeed() * surf.top();
-        if (this.isTouchingWater()) top *= 0.3f;
+        if (this.isInWater()) top *= 0.3f;
         if (this.isInLava()) top *= 0.2f;
 
         // --- wall impact: we were fast, hit something, and nearly stopped
         if (this.horizontalCollision && lastSpeed > 0.55f && moved < lastSpeed * 0.35f) {
             crash(4.0f + (lastSpeed - 0.55f) * 25.0f);
-            speed *= 0.2f;
+            flyDist *= 0.2f;
             velX *= 0.2;
             velZ *= 0.2;
-        } else if (this.horizontalCollision && Math.abs(speed) > 0.05f && moved < Math.abs(speed) * 0.5f) {
-            speed *= 0.6f;
+        } else if (this.horizontalCollision && Math.abs(flyDist) > 0.05f && moved < Math.abs(flyDist) * 0.5f) {
+            flyDist *= 0.6f;
         }
 
         // --- landing
         if (onGround && !lastControlOnGround && airTicks > 8) {
             if (Math.abs(airPitch) > 42.0f) {
                 crash(5.0f + airTicks * 0.1f);
-                speed *= 0.3f;
+                flyDist *= 0.3f;
             } else {
-                speed *= 1.0f - Math.abs(airPitch) / 200.0f; // sloppy landings scrub speed
+                flyDist *= 1.0f - Math.abs(airPitch) / 200.0f; // sloppy landings scrub speed
             }
         }
 
         // --- engine, brakes, rolling resistance
         if (onGround) {
             if (fwdIn > 0) {
-                if (speed < 0) {
-                    speed = Math.min(0.0f, speed + s.brake());
-                } else if (speed < top) {
-                    int g = gearFor(speed / s.maxSpeed());
+                if (flyDist < 0) {
+                    flyDist = Math.min(0.0f, flyDist + s.brake());
+                } else if (flyDist < top) {
+                    int g = gearFor(flyDist / s.maxSpeed());
                     float pull = s.accel() * surf.accel() * (1.35f - 0.13f * g);
-                    speed = Math.min(top, speed + pull * (1.0f - 0.5f * speed / top));
+                    flyDist = Math.min(top, flyDist + pull * (1.0f - 0.5f * flyDist / top));
                 }
             } else if (fwdIn < 0) {
-                if (speed > 0.01f) {
-                    speed = Math.max(0.0f, speed - s.brake() * (0.35f + 0.65f * surf.grip()));
+                if (flyDist > 0.01f) {
+                    flyDist = Math.max(0.0f, flyDist - s.brake() * (0.35f + 0.65f * surf.grip()));
                 } else {
-                    speed = Math.max(-s.reverseSpeed(), speed - 0.01f);
+                    flyDist = Math.max(-s.reverseSpeed(), flyDist - 0.01f);
                 }
             } else {
-                speed *= 0.985f;
-                speed -= Math.signum(speed) * Math.min(Math.abs(speed), 0.003f);
+                flyDist *= 0.985f;
+                flyDist -= Math.signum(flyDist) * Math.min(Math.abs(flyDist), 0.003f);
             }
-            if (speed > top) speed = Math.max(top, speed - 0.025f);
+            if (flyDist > top) flyDist = Math.max(top, flyDist - 0.025f);
         } else {
-            speed *= 0.998f;
+            flyDist *= 0.998f;
         }
 
         // --- steering (bicycle model)
-        float speedFrac = MathHelper.clamp(Math.abs(speed) / s.maxSpeed(), 0.0f, 1.0f);
-        float maxSteer = MathHelper.lerp(speedFrac, s.steerLow(), s.steerHigh());
+        float speedFrac = Mth.clamp(Math.abs(flyDist) / s.maxSpeed(), 0.0f, 1.0f);
+        float maxSteer = Mth.lerp(speedFrac, s.steerLow(), s.steerHigh());
         float targetSteer = -sideIn * maxSteer;
         steer += (targetSteer - steer) * 0.35f;
         float dYaw;
         if (onGround) {
-            double yawRate = speed * Math.tan(steer * DEG) / s.wheelbase();
+            double yawRate = flyDist * Math.tan(steer * DEG) / s.wheelbase();
             dYaw = (float) Math.toDegrees(yawRate) * (0.45f + 0.55f * surf.grip());
         } else {
             dYaw = -sideIn * 1.5f; // a little "scrub" in the air
         }
         if (dYaw != 0.0f) {
-            this.setYaw(this.getYaw() + dYaw);
-            rider.setYaw(rider.getYaw() + dYaw);
+            this.setYRot(this.getYRot() + dYaw);
+            rider.setYRot(rider.getYRot() + dYaw);
         }
 
         // --- traction: actual velocity slides toward where the wheels point
-        float yawRad = this.getYaw() * DEG;
-        double fx = -MathHelper.sin(yawRad), fz = MathHelper.cos(yawRad);
+        float yawRad = this.getYRot() * DEG;
+        double fx = -Mth.sin(yawRad), fz = Mth.cos(yawRad);
         if (onGround) {
             double grip = surf.grip();
-            velX += (fx * speed - velX) * grip;
-            velZ += (fz * speed - velZ) * grip;
+            velX += (fx * flyDist - velX) * grip;
+            velZ += (fz * flyDist - velZ) * grip;
             double lateral = velX * -fz + velZ * fx;
-            speed -= (float) Math.abs(lateral) * 0.04f * Math.signum(speed);
+            flyDist -= (float) Math.abs(lateral) * 0.04f * Math.signum(flyDist);
         } else {
             velX *= 0.995;
             velZ *= 0.995;
         }
 
         // --- vertical: ramps, kickers, preload hop, air control
-        double vy = this.getVelocity().y;
+        double vy = this.getDeltaMovement().y;
         if (onGround) {
-            if (lastControlOnGround && climbed > 0.2 && climbed < 1.1 && speed > 0.3f) {
-                vy = Math.max(vy, Math.min(0.7, climbed * speed));
+            if (lastControlOnGround && climbed > 0.2 && climbed < 1.1 && flyDist > 0.3f) {
+                vy = Math.max(vy, Math.min(0.7, climbed * flyDist));
                 airPitch = (float) -Math.min(35.0, vy * 55.0);
             }
-            BlockState feet = this.getWorld().getBlockState(this.getBlockPos());
-            if (feet.getBlock() instanceof KickerRampBlock && speed > 0.25f) {
-                Direction face = feet.get(KickerRampBlock.FACING);
-                double along = fx * face.getOffsetX() + fz * face.getOffsetZ();
+            BlockState feet = this.level().getBlockState(this.blockPosition());
+            if (feet.getBlock() instanceof KickerRampBlock && flyDist > 0.25f) {
+                Direction face = feet.getValue(KickerRampBlock.FACING);
+                double along = fx * face.getStepX() + fz * face.getStepZ();
                 if (along > 0.5) {
-                    vy = 0.38 + speed * 0.5;
+                    vy = 0.38 + flyDist * 0.5;
                     airPitch = -28.0f;
                 }
             }
@@ -410,17 +410,17 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
             }
             if (vy <= 0.0) airPitch = 0.0f;
         } else {
-            float natural = (float) MathHelper.clamp(-vy * 60.0, -40.0, 40.0);
+            float natural = (float) Mth.clamp(-vy * 60.0, -40.0, 40.0);
             airPitch += (natural - airPitch) * 0.05f;
             airPitch += fwdIn * 2.4f; // W = nose down, S = nose up
-            airPitch = MathHelper.clamp(airPitch, -80.0f, 80.0f);
+            airPitch = Mth.clamp(airPitch, -80.0f, 80.0f);
         }
         jumpCharge = 0.0f;
         airTicks = onGround ? 0 : airTicks + 1;
 
-        this.setVelocity(velX, vy, velZ);
+        this.setDeltaMovement(velX, vy, velZ);
 
-        lastSpeed = Math.abs(speed);
+        lastSpeed = Math.abs(flyDist);
         lastControlX = getX();
         lastControlY = getY();
         lastControlZ = getZ();
@@ -428,7 +428,7 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     }
 
     private void crash(float severity) {
-        if (crashCooldown > 0 || !this.getWorld().isClient) return;
+        if (crashCooldown > 0 || !this.level().isClientSide) return;
         crashCooldown = 40;
         crashSender.accept(severity);
     }
@@ -446,12 +446,12 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     @Override
     public void tick() {
         super.tick();
-        this.setBodyYaw(this.getYaw());
-        this.setHeadYaw(this.getYaw());
-        if (this.getWorld().isClient) {
-            controlledLocally = this.isLogicalSideForUpdatingMovement() && this.hasControllingPassenger();
-            if (!this.hasPassengers()) {
-                speed = 0.0f;
+        this.setYBodyRot(this.getYRot());
+        this.setYHeadRot(this.getYRot());
+        if (this.level().isClientSide) {
+            controlledLocally = this.isControlledByLocalInstance() && this.hasControllingPassenger();
+            if (!this.isVehicle()) {
+                flyDist = 0.0f;
                 velX = velZ = 0.0;
             }
             clientVisualTick();
@@ -469,28 +469,28 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         prevSuspension = suspension;
         prevDisplaySpeed = displaySpeed;
 
-        double dx = getX() - prevX, dy = getY() - prevY, dz = getZ() - prevZ;
-        float yawRad = getYaw() * DEG;
-        double fwd = -MathHelper.sin(yawRad) * dx + MathHelper.cos(yawRad) * dz;
+        double dx = getX() - xo, dy = getY() - yo, dz = getZ() - zo;
+        float yawRad = getYRot() * DEG;
+        double fwd = -Mth.sin(yawRad) * dx + Mth.cos(yawRad) * dz;
         wheelSpin += (float) (fwd / WHEEL_RADIUS);
         displaySpeed += ((float) Math.sqrt(dx * dx + dz * dz) - displaySpeed) * 0.35f;
 
-        boolean grounded = this.isOnGround();
-        float dYawRad = MathHelper.wrapDegrees(getYaw() - prevYaw) * DEG;
+        boolean grounded = this.onGround();
+        float dYawRad = Mth.wrapDegrees(getYRot() - yRotO) * DEG;
 
         // steering angle: exact when we're riding it, otherwise worked back out from the turn rate
         float steerTarget = controlledLocally ? steer
                 : displaySpeed > 0.03f ? (float) Math.toDegrees(Math.atan(dYawRad * s.wheelbase() / displaySpeed)) : steerVisual;
-        steerVisual += (MathHelper.clamp(steerTarget, -40.0f, 40.0f) - steerVisual) * 0.5f;
+        steerVisual += (Mth.clamp(steerTarget, -40.0f, 40.0f) - steerVisual) * 0.5f;
 
         // lean angle from centripetal acceleration: tan(lean) = v * omega / g
-        float leanTarget = grounded ? (float) Math.toDegrees(Math.atan(displaySpeed * dYawRad / GRAVITY)) * s.leanFactor() : lean * 0.97f;
-        lean += (MathHelper.clamp(leanTarget, -38.0f, 38.0f) - lean) * 0.3f;
+        float leanTarget = grounded ? (float) Math.toDegrees(Math.atan(displaySpeed * dYawRad / DEFAULT_BASE_GRAVITY)) * s.leanFactor() : lean * 0.97f;
+        lean += (Mth.clamp(leanTarget, -38.0f, 38.0f) - lean) * 0.3f;
 
         boolean onThrottle = controlledLocally ? throttle > 0 : displaySpeed - prevDisplaySpeed > 0.002f;
         float pitchTarget;
         if (!grounded) {
-            pitchTarget = controlledLocally ? airPitch : (float) MathHelper.clamp(-dy * 60.0, -40.0, 40.0);
+            pitchTarget = controlledLocally ? airPitch : (float) Mth.clamp(-dy * 60.0, -40.0, 40.0);
         } else if (s.wheelies() && onThrottle && displaySpeed > 0.04f && displaySpeed < 0.3f && displaySpeed - prevDisplaySpeed > 0.008f) {
             pitchTarget = -14.0f; // wheelie off the line
         } else {
@@ -510,27 +510,27 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         gear = gearFor(frac);
         float lo = GEARS[gear - 1];
         float hi = gear < GEARS.length ? GEARS[gear] : 1.05f;
-        float rpmTarget = 0.18f + 0.82f * MathHelper.clamp((frac - lo) / (hi - lo), 0.0f, 1.0f);
+        float rpmTarget = 0.18f + 0.82f * Mth.clamp((frac - lo) / (hi - lo), 0.0f, 1.0f);
         if (onThrottle) rpmTarget = Math.max(rpmTarget, 0.45f);
         if (!grounded && onThrottle) rpmTarget = 1.0f;
-        if (!this.hasPassengers()) rpmTarget = 0.0f;
+        if (!this.isVehicle()) rpmTarget = 0.0f;
         rpm += (rpmTarget - rpm) * 0.3f;
 
-        if (this.hasPassengers() && !engineRunning) {
+        if (this.isVehicle() && !engineRunning) {
             engineRunning = true;
             engineSoundStarter.accept(this);
         }
 
         // roost: dirt flies off the rear tyre under power or when sliding
         if (grounded && displaySpeed > 0.12f && this.random.nextFloat() < displaySpeed * (onThrottle ? 1.2f : 0.3f)) {
-            BlockState under = this.getWorld().getBlockState(BlockPos.ofFloored(getX(), getY() - 0.2, getZ()));
-            if (!under.isAir() && under.getRenderType() != BlockRenderType.INVISIBLE) {
-                double bx = getX() + MathHelper.sin(yawRad) * 0.8;
-                double bz = getZ() - MathHelper.cos(yawRad) * 0.8;
+            BlockState under = this.level().getBlockState(BlockPos.containing(getX(), getY() - 0.2, getZ()));
+            if (!under.isAir() && under.getRenderShape() != RenderShape.INVISIBLE) {
+                double bx = getX() + Mth.sin(yawRad) * 0.8;
+                double bz = getZ() - Mth.cos(yawRad) * 0.8;
                 for (int i = 0; i < 2; i++) {
-                    this.getWorld().addParticle(new BlockStateParticleEffect(ParticleTypes.BLOCK, under),
+                    this.level().addParticle(new BlockParticleOption(ParticleTypes.BLOCK, under),
                             bx + (random.nextDouble() - 0.5) * 0.4, getY() + 0.1, bz + (random.nextDouble() - 0.5) * 0.4,
-                            MathHelper.sin(yawRad) * displaySpeed * 1.5, 0.2 + random.nextDouble() * 0.2, -MathHelper.cos(yawRad) * displaySpeed * 1.5);
+                            Mth.sin(yawRad) * displaySpeed * 1.5, 0.2 + random.nextDouble() * 0.2, -Mth.cos(yawRad) * displaySpeed * 1.5);
                 }
             }
         }
@@ -541,17 +541,17 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         if (messageHold > 0) messageHold--;
         if (refuelMessageCooldown > 0) refuelMessageCooldown--;
         double mx = getX() - serverLastX, mz = getZ() - serverLastZ;
-        double moved = this.age > 1 ? Math.min(2.0, Math.sqrt(mx * mx + mz * mz)) : 0.0;
+        double moved = this.tickCount > 1 ? Math.min(2.0, Math.sqrt(mx * mx + mz * mz)) : 0.0;
         serverLastX = getX();
         serverLastZ = getZ();
-        if (this.age % 5 == 0) tickFuelPumps();
-        if (!(this.getControllingPassenger() instanceof ServerPlayerEntity rider)) {
+        if (this.tickCount % 5 == 0) tickFuelPumps();
+        if (!(this.getControllingPassenger() instanceof ServerPlayer rider)) {
             serverAirTicks = 0;
             return;
         }
 
         // hard landings (flat drops) hurt even if you land straight; gear helps a lot
-        boolean grounded = !this.getWorld().isSpaceEmpty(this, this.getBoundingBox().contract(0.05, 0.0, 0.05).offset(0.0, -0.12, 0.0));
+        boolean grounded = !this.level().noCollision(this, this.getBoundingBox().deflate(0.05, 0.0, 0.05).move(0.0, -0.12, 0.0));
         if (!grounded) {
             peakY = serverAirTicks == 0 ? getY() : Math.max(peakY, getY());
             serverAirTicks++;
@@ -559,12 +559,12 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
             if (serverAirTicks > 0) {
                 double drop = peakY - getY();
                 if (serverAirTicks >= 14) {
-                    showMessage(rider, Text.literal(String.format("Airtime %.2fs", serverAirTicks / 20.0f)).formatted(Formatting.AQUA), 30);
+                    showMessage(rider, Component.literal(String.format("Airtime %.2fs", serverAirTicks / 20.0f)).withStyle(ChatFormatting.AQUA), 30);
                 }
                 if (drop > 12.0) {
                     float dmg = (float) (drop - 12.0) * 0.5f;
                     if (MotocrossGear.isWearingFullSet(rider)) dmg *= 0.3f;
-                    if (dmg >= 1.0f) rider.damage(this.getDamageSources().fall(), dmg);
+                    if (dmg >= 1.0f) rider.hurt(this.damageSources().fall(), dmg);
                 }
             }
             serverAirTicks = 0;
@@ -575,9 +575,9 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
             setFuel(getFuel() - (float) moved * FUEL_PER_BLOCK - 0.0005f);
             if (getFuel() <= 0.0f && !warnedEmpty) {
                 warnedEmpty = true;
-                showMessage(rider, Text.literal("OUT OF FUEL! Find a gas station or use a Fuel Can").formatted(Formatting.RED, Formatting.BOLD), 60);
+                showMessage(rider, Component.literal("OUT OF FUEL! Find a gas station or use a Fuel Can").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), 60);
             } else if (getFuel() < 15.0f && getFuel() + (float) moved * FUEL_PER_BLOCK + 0.0005f >= 15.0f) {
-                showMessage(rider, Text.literal("Low fuel!").formatted(Formatting.GOLD, Formatting.BOLD), 40);
+                showMessage(rider, Component.literal("Low fuel!").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), 40);
             }
         }
 
@@ -587,10 +587,10 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     /** Parked within 2 blocks of a Fuel Pump: fill up (about 5 seconds for a full tank). */
     private void tickFuelPumps() {
         if (getFuel() >= MAX_FUEL) return;
-        BlockPos base = this.getBlockPos();
+        BlockPos base = this.blockPosition();
         boolean nearPump = false;
-        for (BlockPos p : BlockPos.iterate(base.add(-2, -1, -2), base.add(2, 2, 2))) {
-            if (this.getWorld().getBlockState(p).isOf(com.dirtlegends.registry.ModBlocks.FUEL_PUMP)) {
+        for (BlockPos p : BlockPos.betweenClosed(base.offset(-2, -1, -2), base.offset(2, 2, 2))) {
+            if (this.level().getBlockState(p).is(com.dirtlegends.registry.ModBlocks.FUEL_PUMP)) {
                 nearPump = true;
                 break;
             }
@@ -598,54 +598,54 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         if (!nearPump) return;
         setFuel(getFuel() + 5.0f);
         warnedEmpty = false;
-        if (this.getControllingPassenger() instanceof ServerPlayerEntity rider && refuelMessageCooldown == 0) {
-            showMessage(rider, Text.literal("REFUELING  " + Math.round(getFuel()) + "%").formatted(Formatting.YELLOW, Formatting.BOLD), 6);
+        if (this.getControllingPassenger() instanceof ServerPlayer rider && refuelMessageCooldown == 0) {
+            showMessage(rider, Component.literal("REFUELING  " + Math.round(getFuel()) + "%").withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD), 6);
             refuelMessageCooldown = 5;
         }
-        if (this.age % 20 == 0) {
-            this.playSound(SoundEvents.BLOCK_BREWING_STAND_BREW, 0.5f, 1.4f);
+        if (this.tickCount % 20 == 0) {
+            this.playSound(SoundEvents.BREWING_STAND_BREW, 0.5f, 1.4f);
         }
     }
 
     /** Called on the server when the rider's client reports a crash. */
-    public void serverCrash(ServerPlayerEntity rider, float severity) {
-        long now = this.getWorld().getTime();
+    public void serverCrash(ServerPlayer rider, float severity) {
+        long now = this.level().getGameTime();
         if (now - lastCrashTick < 30 || !this.hasPassenger(rider)) return;
         lastCrashTick = now;
-        severity = MathHelper.clamp(severity, 0.0f, 14.0f);
+        severity = Mth.clamp(severity, 0.0f, 14.0f);
         boolean geared = MotocrossGear.isWearingFullSet(rider);
         float dmg = geared ? severity * 0.3f : severity;
         rider.stopRiding();
-        float yawRad = this.getYaw() * DEG;
-        rider.setVelocity(-MathHelper.sin(yawRad) * 0.6, 0.45, MathHelper.cos(yawRad) * 0.6);
-        rider.velocityModified = true;
-        if (dmg >= 0.5f) rider.damage(this.getDamageSources().flyIntoWall(), dmg);
-        this.getWorld().playSound(null, getX(), getY(), getZ(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.NEUTRAL, 0.5f, 0.6f);
-        rider.sendMessage(Text.literal(geared ? "CRASHED! Your gear saved you." : "CRASHED! Wear full Motocross gear!").formatted(Formatting.RED, Formatting.BOLD), true);
+        float yawRad = this.getYRot() * DEG;
+        rider.setDeltaMovement(-Mth.sin(yawRad) * 0.6, 0.45, Mth.cos(yawRad) * 0.6);
+        rider.hurtMarked = true;
+        if (dmg >= 0.5f) rider.hurt(this.damageSources().flyIntoWall(), dmg);
+        this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL, 0.5f, 0.6f);
+        rider.displayClientMessage(Component.literal(geared ? "CRASHED! Your gear saved you." : "CRASHED! Wear full Motocross gear!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), true);
         lapActive = false;
     }
 
-    private void tickRaceTiming(ServerPlayerEntity rider) {
-        long now = this.getWorld().getTime();
-        BlockState under = this.getWorld().getBlockState(BlockPos.ofFloored(getX(), getY() - 0.3, getZ()));
-        boolean onLine = under.isOf(com.dirtlegends.registry.ModBlocks.START_FINISH_LINE);
+    private void tickRaceTiming(ServerPlayer rider) {
+        long now = this.level().getGameTime();
+        BlockState under = this.level().getBlockState(BlockPos.containing(getX(), getY() - 0.3, getZ()));
+        boolean onLine = under.is(com.dirtlegends.registry.ModBlocks.START_FINISH_LINE);
         if (onLine && !wasOnLine) {
             if (!lapActive) {
                 lapActive = true;
                 lapStart = now;
                 lapNumber = 1;
                 checkpoints.clear();
-                showMessage(rider, Text.literal("GO! Lap 1").formatted(Formatting.GREEN, Formatting.BOLD), 40);
+                showMessage(rider, Component.literal("GO! Lap 1").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), 40);
             } else if (now - lapStart > 40) {
                 if (checkpoints.isEmpty()) {
-                    showMessage(rider, Text.literal("Missed the checkpoints! Lap restarted").formatted(Formatting.RED), 50);
+                    showMessage(rider, Component.literal("Missed the checkpoints! Lap restarted").withStyle(ChatFormatting.RED), 50);
                 } else {
                     long lap = now - lapStart;
                     boolean best = bestLap < 0 || lap < bestLap;
                     if (best) bestLap = lap;
-                    showMessage(rider, Text.literal("Lap " + lapNumber + ": " + formatTime(lap)
+                    showMessage(rider, Component.literal("Lap " + lapNumber + ": " + formatTime(lap)
                                     + (best ? "  NEW BEST!" : "  (best " + formatTime(bestLap) + ")"))
-                            .formatted(best ? Formatting.GOLD : Formatting.WHITE, Formatting.BOLD), 70);
+                            .withStyle(best ? ChatFormatting.GOLD : ChatFormatting.WHITE, ChatFormatting.BOLD), 70);
                     lapNumber++;
                 }
                 lapStart = now;
@@ -654,23 +654,23 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
         }
         wasOnLine = onLine;
 
-        if (lapActive && under.isOf(com.dirtlegends.registry.ModBlocks.CHECKPOINT)) {
-            BlockPos p = BlockPos.ofFloored(getX(), getY() - 0.3, getZ());
-            if (checkpoints.stream().noneMatch(q -> q.isWithinDistance(p, 6.0))) {
+        if (lapActive && under.is(com.dirtlegends.registry.ModBlocks.CHECKPOINT)) {
+            BlockPos p = BlockPos.containing(getX(), getY() - 0.3, getZ());
+            if (checkpoints.stream().noneMatch(q -> q.closerThan(p, 6.0))) {
                 checkpoints.add(p);
-                showMessage(rider, Text.literal("Checkpoint " + checkpoints.size() + "  " + formatTime(now - lapStart)).formatted(Formatting.YELLOW), 35);
+                showMessage(rider, Component.literal("Checkpoint " + checkpoints.size() + "  " + formatTime(now - lapStart)).withStyle(ChatFormatting.YELLOW), 35);
             }
         }
 
         if (lapActive && messageHold == 0 && now % 4 == 0) {
-            rider.sendMessage(Text.literal("Lap " + lapNumber + "  " + formatTime(now - lapStart)
+            rider.displayClientMessage(Component.literal("Lap " + lapNumber + "  " + formatTime(now - lapStart)
                     + "  CP " + checkpoints.size()
-                    + (bestLap > 0 ? "  Best " + formatTime(bestLap) : "")).formatted(Formatting.GRAY), true);
+                    + (bestLap > 0 ? "  Best " + formatTime(bestLap) : "")).withStyle(ChatFormatting.GRAY), true);
         }
     }
 
-    private void showMessage(ServerPlayerEntity rider, Text text, int holdTicks) {
-        rider.sendMessage(text, true);
+    private void showMessage(ServerPlayer rider, Component text, int holdTicks) {
+        rider.displayClientMessage(text, true);
         messageHold = holdTicks;
     }
 
@@ -682,23 +682,23 @@ public abstract class MotoVehicleEntity extends MobEntity implements JumpingMoun
     // ------------------------------------------------------------------ getters for rendering / HUD / sound
 
     public float getWheelSpin(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevWheelSpin, wheelSpin);
+        return Mth.lerp(tickDelta, prevWheelSpin, wheelSpin);
     }
 
     public float getBodyPitch(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevBodyPitch, bodyPitch);
+        return Mth.lerp(tickDelta, prevBodyPitch, bodyPitch);
     }
 
     public float getLean(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevLean, lean);
+        return Mth.lerp(tickDelta, prevLean, lean);
     }
 
     public float getSteerAngle(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevSteerVisual, steerVisual);
+        return Mth.lerp(tickDelta, prevSteerVisual, steerVisual);
     }
 
     public float getSuspension(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevSuspension, suspension);
+        return Mth.lerp(tickDelta, prevSuspension, suspension);
     }
 
     public float getSpeedKmh() {
