@@ -16,7 +16,7 @@ public class MudBlock extends LiquidBlock {
     }
 
     @Override
-    protected void entityInside(BlockState state, Level world, BlockPos pos, Entity entity) {
+    protected void entityInside(BlockState state, Level world, BlockPos pos, Entity entity, net.minecraft.world.entity.InsideBlockEffectApplier effects, boolean intersects) {
         if (!(entity instanceof MotoVehicleEntity) && !(entity.getVehicle() instanceof MotoVehicleEntity)) {
             entity.makeStuckInBlock(state, new Vec3(0.45, 0.6, 0.45));
         }

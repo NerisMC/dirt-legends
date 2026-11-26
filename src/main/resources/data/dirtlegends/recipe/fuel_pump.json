@@ -7,15 +7,9 @@
     "IRI"
   ],
   "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "B": {
-      "item": "minecraft:bucket"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
-    }
+    "I": "minecraft:iron_ingot",
+    "B": "minecraft:bucket",
+    "R": "minecraft:redstone_block"
   },
   "result": {
     "id": "dirtlegends:fuel_pump",

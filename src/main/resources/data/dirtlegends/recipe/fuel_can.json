@@ -7,12 +7,8 @@
     "III"
   ],
   "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "R": {
-      "item": "minecraft:coal"
-    }
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:coal"
   },
   "result": {
     "id": "dirtlegends:fuel_can",

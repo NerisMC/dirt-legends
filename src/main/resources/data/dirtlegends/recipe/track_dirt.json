@@ -6,12 +6,8 @@
     "CD"
   ],
   "key": {
-    "D": {
-      "item": "minecraft:dirt"
-    },
-    "C": {
-      "item": "minecraft:coarse_dirt"
-    }
+    "D": "minecraft:dirt",
+    "C": "minecraft:coarse_dirt"
   },
   "result": {
     "id": "dirtlegends:track_dirt",

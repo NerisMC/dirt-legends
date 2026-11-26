@@ -1,7 +1,7 @@
 package com.dirtlegends.registry;
 
 import com.dirtlegends.DirtLegends;
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 
 public final class ModItemGroup {
     public static final CreativeModeTab MAIN = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, DirtLegends.id("main"),
-            FabricItemGroup.builder()
+            FabricCreativeModeTab.builder()
                     .icon(() -> new ItemStack(ModItems.DIRT_BIKES[0]))
                     .title(Component.translatable("itemGroup." + DirtLegends.MOD_ID))
                     .displayItems((context, entries) -> {

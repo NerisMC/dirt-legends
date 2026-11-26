@@ -16,14 +16,18 @@ public final class ModEntities {
                     .sized(1.0f, 1.1f)
                     .passengerAttachments(0.95f)
                     .clientTrackingRange(10)
-                    .build("dirt_bike"));
+                    .build(key("dirt_bike")));
 
     public static final EntityType<AtvEntity> ATV = Registry.register(BuiltInRegistries.ENTITY_TYPE, DirtLegends.id("atv"),
             EntityType.Builder.of(AtvEntity::new, MobCategory.MISC)
                     .sized(1.3f, 1.0f)
                     .passengerAttachments(0.85f)
                     .clientTrackingRange(10)
-                    .build("atv"));
+                    .build(key("atv")));
+
+    private static net.minecraft.resources.ResourceKey<EntityType<?>> key(String name) {
+        return net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ENTITY_TYPE, DirtLegends.id(name));
+    }
 
     private ModEntities() {
     }

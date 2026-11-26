@@ -21,7 +21,7 @@ public class TrackKitItem extends Item {
         }
         TrackGenerator.generate(world, context.getClickedPos(), world.getRandom());
         if (context.getPlayer() != null) {
-            context.getPlayer().displayClientMessage(Component.literal("Track built! Start line is on the east side.").withStyle(ChatFormatting.GREEN), true);
+            context.getPlayer().sendOverlayMessage(Component.literal("Track built! Start line is on the east side.").withStyle(ChatFormatting.GREEN));
         }
         context.getItemInHand().consume(1, context.getPlayer());
         return InteractionResult.CONSUME;

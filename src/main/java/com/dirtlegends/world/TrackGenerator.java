@@ -9,7 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Block;
@@ -150,12 +150,12 @@ public final class TrackGenerator {
         // the crowd: villagers standing on the bleachers, facing the track (south)
         int fans = 5 + random.nextInt(4);
         for (int i = 0; i < fans; i++) {
-            Villager fan = EntityType.VILLAGER.create(world.getLevel());
+            Villager fan = EntityType.VILLAGER.create(world.getLevel(), net.minecraft.world.entity.EntitySpawnReason.STRUCTURE);
             if (fan == null) continue;
             int row = random.nextInt(3);
             double x = cx - 8 + random.nextInt(17) + 0.5;
             double z = cz - B - 4 - row + 0.5;
-            fan.moveTo(x, y + 2 + row, z, 0.0f, 0.0f);
+            fan.snapTo(x, y + 2 + row, z, 0.0f, 0.0f);
             fan.setYHeadRot(0.0f);
             fan.setYBodyRot(0.0f);
             fan.setNoAi(true);

@@ -5,9 +5,7 @@
     "TTT"
   ],
   "key": {
-    "T": {
-      "item": "dirtlegends:track_dirt"
-    }
+    "T": "dirtlegends:track_dirt"
   },
   "result": {
     "id": "dirtlegends:dirt_slab",

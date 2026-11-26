@@ -7,15 +7,9 @@
     "L L"
   ],
   "key": {
-    "L": {
-      "item": "minecraft:leather"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "W": {
-      "item": "minecraft:white_wool"
-    }
+    "L": "minecraft:leather",
+    "I": "minecraft:iron_ingot",
+    "W": "minecraft:white_wool"
   },
   "result": {
     "id": "dirtlegends:mx_pants",

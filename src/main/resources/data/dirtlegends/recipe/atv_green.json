@@ -7,18 +7,10 @@
     "T T"
   ],
   "key": {
-    "D": {
-      "item": "minecraft:lime_dye"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "E": {
-      "item": "dirtlegends:engine"
-    },
-    "T": {
-      "item": "dirtlegends:tire"
-    }
+    "D": "minecraft:lime_dye",
+    "I": "minecraft:iron_ingot",
+    "E": "dirtlegends:engine",
+    "T": "dirtlegends:tire"
   },
   "result": {
     "id": "dirtlegends:atv_green",

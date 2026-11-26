@@ -35,7 +35,7 @@ public abstract class MudFluid extends FlowingFluid {
     }
 
     @Override
-    protected boolean canConvertToSource(Level world) {
+    protected boolean canConvertToSource(net.minecraft.server.level.ServerLevel world) {
         return false;
     }
 

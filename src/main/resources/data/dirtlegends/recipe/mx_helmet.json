@@ -6,15 +6,9 @@
     "LGL"
   ],
   "key": {
-    "L": {
-      "item": "minecraft:leather"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    },
-    "G": {
-      "item": "minecraft:glass_pane"
-    }
+    "L": "minecraft:leather",
+    "R": "minecraft:red_dye",
+    "G": "minecraft:glass_pane"
   },
   "result": {
     "id": "dirtlegends:mx_helmet",

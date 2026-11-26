@@ -28,12 +28,12 @@ public class VehicleItem extends Item {
             return InteractionResult.SUCCESS;
         }
         BlockPos pos = context.getClickedPos().relative(context.getClickedFace());
-        MotoVehicleEntity vehicle = type.get().create(serverWorld);
+        MotoVehicleEntity vehicle = type.get().create(serverWorld, net.minecraft.world.entity.EntitySpawnReason.SPAWN_ITEM_USE);
         if (vehicle == null) {
             return InteractionResult.FAIL;
         }
         float yaw = context.getRotation();
-        vehicle.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
+        vehicle.snapTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, yaw, 0.0f);
         vehicle.setYHeadRot(yaw);
         vehicle.setYBodyRot(yaw);
         vehicle.setVariant(variant);

@@ -6,7 +6,7 @@ import com.dirtlegends.registry.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,8 +14,8 @@ public class DirtLegends implements ModInitializer {
     public static final String MOD_ID = "dirtlegends";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    public static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     @Override
@@ -29,7 +29,7 @@ public class DirtLegends implements ModInitializer {
         ModItemGroup.init();
         ModWorldgen.init();
 
-        PayloadTypeRegistry.playC2S().register(CrashPayload.ID, CrashPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(CrashPayload.ID, CrashPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(CrashPayload.ID, (payload, context) -> {
             if (context.player().getVehicle() instanceof MotoVehicleEntity vehicle) {
                 vehicle.serverCrash(context.player(), payload.severity());

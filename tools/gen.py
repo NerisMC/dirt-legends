@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Generates textures, entity models (Java), sounds and JSON data for the Dirt Legends mod."""
+import os
+# Since 2.0.0 (Minecraft 26.1.2) the Java model classes are maintained by hand;
+# the templates here are the old 1.21.1 versions and only the textures/JSON are still generated.
+WRITE_JAVA = False
 import json, math, os, random, subprocess, sys
 import numpy as np
 from PIL import Image
@@ -260,7 +264,7 @@ public class DirtBikeModel extends SinglePartEntityModel<MotoVehicleEntity> {{
     }}
 }}
 '''
-    with open(mk(f"{J}/client/DirtBikeModel.java"), "w") as fh:
+    with (open(os.devnull, "w") if not WRITE_JAVA else open(mk(f"{J}/client/DirtBikeModel.java"), "w")) as fh:
         fh.write(src)
 
 
@@ -333,7 +337,7 @@ public class AtvModel extends SinglePartEntityModel<MotoVehicleEntity> {{
     }}
 }}
 '''
-    with open(mk(f"{J}/client/AtvModel.java"), "w") as fh:
+    with (open(os.devnull, "w") if not WRITE_JAVA else open(mk(f"{J}/client/AtvModel.java"), "w")) as fh:
         fh.write(src)
 
 # ---------------------------------------------------------------- 16x16 sprites

@@ -7,12 +7,8 @@
     " K "
   ],
   "key": {
-    "K": {
-      "item": "minecraft:dried_kelp"
-    },
-    "N": {
-      "item": "minecraft:iron_nugget"
-    }
+    "K": "minecraft:dried_kelp",
+    "N": "minecraft:iron_nugget"
   },
   "result": {
     "id": "dirtlegends:tire",

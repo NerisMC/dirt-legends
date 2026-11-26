@@ -6,15 +6,9 @@
     "TTT"
   ],
   "key": {
-    "Y": {
-      "item": "minecraft:yellow_wool"
-    },
-    "B": {
-      "item": "minecraft:black_wool"
-    },
-    "T": {
-      "item": "dirtlegends:track_dirt"
-    }
+    "Y": "minecraft:yellow_wool",
+    "B": "minecraft:black_wool",
+    "T": "dirtlegends:track_dirt"
   },
   "result": {
     "id": "dirtlegends:checkpoint",

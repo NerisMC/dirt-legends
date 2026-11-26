@@ -7,15 +7,9 @@
     "LLL"
   ],
   "key": {
-    "L": {
-      "item": "minecraft:leather"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    },
-    "W": {
-      "item": "minecraft:white_wool"
-    }
+    "L": "minecraft:leather",
+    "R": "minecraft:red_dye",
+    "W": "minecraft:white_wool"
   },
   "result": {
     "id": "dirtlegends:mx_jersey",

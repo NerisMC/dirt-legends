@@ -12,7 +12,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -150,7 +152,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag nbt) {
+    public void addAdditionalSaveData(ValueOutput nbt) {
         super.addAdditionalSaveData(nbt);
         nbt.putInt("Variant", getVariant());
         nbt.putFloat("Fuel", getFuel());
@@ -158,11 +160,11 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag nbt) {
+    public void readAdditionalSaveData(ValueInput nbt) {
         super.readAdditionalSaveData(nbt);
-        setVariant(nbt.getInt("Variant"));
-        if (nbt.contains("Fuel")) setFuel(nbt.getFloat("Fuel"));
-        if (nbt.contains("BestLap")) bestLap = nbt.getLong("BestLap");
+        setVariant(nbt.getIntOr("Variant", 0));
+        setFuel(nbt.getFloatOr("Fuel", MAX_FUEL));
+        bestLap = nbt.getLongOr("BestLap", bestLap);
     }
 
     // ------------------------------------------------------------------ basic vehicle behaviour
@@ -172,22 +174,22 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         ItemStack held = player.getItemInHand(hand);
         if (held.is(ModItems.FUEL_CAN)) {
             if (getFuel() >= MAX_FUEL - 0.5f) return InteractionResult.PASS;
-            if (!this.level().isClientSide) {
+            if (!this.level().isClientSide()) {
                 setFuel(getFuel() + com.dirtlegends.item.FuelCanItem.FUEL_AMOUNT);
                 held.consume(1, player);
                 this.playSound(SoundEvents.BUCKET_EMPTY, 1.0f, 0.8f);
-                player.displayClientMessage(Component.literal("Refueled: " + Math.round(getFuel()) + "%").withStyle(ChatFormatting.GREEN), true);
+                player.sendOverlayMessage(Component.literal("Refueled: " + Math.round(getFuel()) + "%").withStyle(ChatFormatting.GREEN));
                 warnedEmpty = false;
             }
-            return InteractionResult.sidedSuccess(this.level().isClientSide);
+            return InteractionResult.SUCCESS;
         }
         if (player.isSecondaryUseActive() || this.isVehicle()) {
             return InteractionResult.PASS;
         }
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide()) {
             player.startRiding(this);
         }
-        return InteractionResult.sidedSuccess(this.level().isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable
@@ -197,26 +199,26 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     @Override
-    public boolean hurt(DamageSource source, float amount) {
+    public boolean hurtServer(ServerLevel serverLevel, DamageSource source, float amount) {
         if (source.getEntity() instanceof Player player) {
-            if (this.level().isClientSide || this.isRemoved()) return true;
+            if (this.isRemoved()) return true;
             if (this.hasPassenger(player)) return false;
             if (!player.getAbilities().instabuild) {
-                this.spawnAtLocation(getVariantStack(getVariant()));
+                this.spawnAtLocation(serverLevel, getVariantStack(getVariant()));
             }
-            this.playSound(SoundEvents.ITEM_BREAK, 0.8f, 0.8f);
+            this.playSound(SoundEvents.ITEM_BREAK.value(), 0.8f, 0.8f);
             this.ejectPassengers();
             this.discard();
             return true;
         }
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-            return super.hurt(source, amount);
+            return super.hurtServer(serverLevel, source, amount);
         }
         return false; // fire, cactus, mobs, falling etc. don't wreck the vehicle
     }
 
     @Override
-    public boolean causeFallDamage(float fallDistance, float damageMultiplier, DamageSource damageSource) {
+    public boolean causeFallDamage(double fallDistance, float damageMultiplier, DamageSource damageSource) {
         return false; // hard landings are handled in serverTick()
     }
 
@@ -236,7 +238,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     @Override
-    public boolean startRiding(Entity entity, boolean force) {
+    public boolean startRiding(Entity entity, boolean force, boolean sendEvent) {
         return false; // vehicles can't be scooped into boats or minecarts
     }
 
@@ -294,7 +296,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     @Override
     protected void tickRidden(Player rider, Vec3 movementInput) {
         super.tickRidden(rider, movementInput);
-        if (!this.isControlledByLocalInstance()) return;
+        if (!this.isLocalInstanceAuthoritative()) return;
 
         VehicleStats s = getStats();
         float fwdIn = rider.zza > 0.01f ? 1.0f : rider.zza < -0.01f ? -1.0f : 0.0f;
@@ -428,7 +430,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     private void crash(float severity) {
-        if (crashCooldown > 0 || !this.level().isClientSide) return;
+        if (crashCooldown > 0 || !this.level().isClientSide()) return;
         crashCooldown = 40;
         crashSender.accept(severity);
     }
@@ -448,8 +450,8 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         super.tick();
         this.setYBodyRot(this.getYRot());
         this.setYHeadRot(this.getYRot());
-        if (this.level().isClientSide) {
-            controlledLocally = this.isControlledByLocalInstance() && this.hasControllingPassenger();
+        if (this.level().isClientSide()) {
+            controlledLocally = this.isLocalInstanceAuthoritative() && this.hasControllingPassenger();
             if (!this.isVehicle()) {
                 flyDist = 0.0f;
                 velX = velZ = 0.0;
@@ -537,7 +539,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
     }
 
     private void serverTick() {
-        this.fallDistance = 0.0f;
+        this.fallDistance = 0.0;
         if (messageHold > 0) messageHold--;
         if (refuelMessageCooldown > 0) refuelMessageCooldown--;
         double mx = getX() - serverLastX, mz = getZ() - serverLastZ;
@@ -621,7 +623,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         rider.hurtMarked = true;
         if (dmg >= 0.5f) rider.hurt(this.damageSources().flyIntoWall(), dmg);
         this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL, 0.5f, 0.6f);
-        rider.displayClientMessage(Component.literal(geared ? "CRASHED! Your gear saved you." : "CRASHED! Wear full Motocross gear!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), true);
+        rider.sendOverlayMessage(Component.literal(geared ? "CRASHED! Your gear saved you." : "CRASHED! Wear full Motocross gear!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
         lapActive = false;
     }
 
@@ -663,14 +665,14 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         }
 
         if (lapActive && messageHold == 0 && now % 4 == 0) {
-            rider.displayClientMessage(Component.literal("Lap " + lapNumber + "  " + formatTime(now - lapStart)
+            rider.sendOverlayMessage(Component.literal("Lap " + lapNumber + "  " + formatTime(now - lapStart)
                     + "  CP " + checkpoints.size()
-                    + (bestLap > 0 ? "  Best " + formatTime(bestLap) : "")).withStyle(ChatFormatting.GRAY), true);
+                    + (bestLap > 0 ? "  Best " + formatTime(bestLap) : "")).withStyle(ChatFormatting.GRAY));
         }
     }
 
     private void showMessage(ServerPlayer rider, Component text, int holdTicks) {
-        rider.displayClientMessage(text, true);
+        rider.sendOverlayMessage(text);
         messageHold = holdTicks;
     }
 
