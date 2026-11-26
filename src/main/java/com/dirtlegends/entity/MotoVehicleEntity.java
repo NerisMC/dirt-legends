@@ -298,10 +298,18 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         super.tickRidden(rider, movementInput);
         if (!this.isLocalInstanceAuthoritative()) return;
 
-        VehicleStats s = getStats();
         float fwdIn = rider.zza > 0.01f ? 1.0f : rider.zza < -0.01f ? -1.0f : 0.0f;
         if (fwdIn > 0 && getFuel() <= 0.0f) fwdIn = 0.0f; // out of gas: you can only coast and brake
         float sideIn = rider.xxa > 0.01f ? 1.0f : rider.xxa < -0.01f ? -1.0f : 0.0f; // + is left
+        physics(fwdIn, sideIn, rider);
+    }
+
+    /**
+     * One tick of bike/ATV physics. Players run it on their own client (tickRidden); AI racers run it on the
+     * server (travel). {@code rider} turns with the vehicle when given.
+     */
+    protected void physics(float fwdIn, float sideIn, @Nullable Entity rider) {
+        VehicleStats s = getStats();
         throttle = fwdIn;
         if (crashCooldown > 0) crashCooldown--;
 
@@ -373,7 +381,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         }
         if (dYaw != 0.0f) {
             this.setYRot(this.getYRot() + dYaw);
-            rider.setYRot(rider.getYRot() + dYaw);
+            if (rider != null) rider.setYRot(rider.getYRot() + dYaw);
         }
 
         // --- traction: actual velocity slides toward where the wheels point
@@ -441,6 +449,29 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
             if (speedFraction >= GEARS[i]) g = i + 1;
         }
         return g;
+    }
+
+    // ------------------------------------------------------------------ AI racers
+
+    @Override
+    public void travel(Vec3 movementInput) {
+        if (!this.level().isClientSide() && !this.hasControllingPassenger()
+                && this.getFirstPassenger() instanceof com.dirtlegends.npc.RacerEntity racer) {
+            float[] in = racer.drive(this);
+            physics(in[0], in[1], null);
+            super.travel(Vec3.ZERO);
+            return;
+        }
+        super.travel(movementInput);
+    }
+
+    /** Forward speed in blocks per tick (signed). */
+    public float speed() {
+        return flyDist;
+    }
+
+    public float airPitch() {
+        return airPitch;
     }
 
     // ------------------------------------------------------------------ ticking
@@ -561,6 +592,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
             if (serverAirTicks > 0) {
                 double drop = peakY - getY();
                 if (serverAirTicks >= 14) {
+                    com.dirtlegends.npc.SpectatorEntity.react(rider.level(), this.position(), com.dirtlegends.npc.SpectatorEntity.Moment.AIR);
                     showMessage(rider, Component.literal(String.format("Airtime %.2fs", serverAirTicks / 20.0f)).withStyle(ChatFormatting.AQUA), 30);
                 }
                 if (drop > 12.0) {
@@ -625,6 +657,7 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
         this.level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL, 0.5f, 0.6f);
         rider.sendOverlayMessage(Component.literal(geared ? "CRASHED! Your gear saved you." : "CRASHED! Wear full Motocross gear!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
         lapActive = false;
+        com.dirtlegends.npc.SpectatorEntity.react(rider.level(), this.position(), com.dirtlegends.npc.SpectatorEntity.Moment.CRASH);
     }
 
     private void tickRaceTiming(ServerPlayer rider) {
@@ -649,6 +682,10 @@ public abstract class MotoVehicleEntity extends Mob implements PlayerRideableJum
                                     + (best ? "  NEW BEST!" : "  (best " + formatTime(bestLap) + ")"))
                             .withStyle(best ? ChatFormatting.GOLD : ChatFormatting.WHITE, ChatFormatting.BOLD), 70);
                     lapNumber++;
+                    int prize = best ? 3 : 1;
+                    ItemStack cash = new ItemStack(net.minecraft.world.item.Items.EMERALD, prize);
+                    if (!rider.getInventory().add(cash)) rider.drop(cash, false);
+                    com.dirtlegends.npc.SpectatorEntity.react(rider.level(), this.position(), com.dirtlegends.npc.SpectatorEntity.Moment.LAP);
                 }
                 lapStart = now;
                 checkpoints.clear();

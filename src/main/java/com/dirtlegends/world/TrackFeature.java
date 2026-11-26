@@ -26,7 +26,7 @@ public class TrackFeature extends Feature<NoneFeatureConfiguration> {
             return false; // don't build on water or on top of plants/trees
         }
         // skip very hilly spots so the track doesn't cut through mountains
-        int[][] probes = {{-17, 0}, {17, 0}, {0, -11}, {0, 11}};
+        int[][] probes = {{-17, 0}, {17, 0}, {0, -11}, {0, 11}, {-21, -19}, {21, -19}, {-21, 18}, {21, 18}};
         for (int[] p : probes) {
             int h = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x + p[0], z + p[1]) - 1;
             if (Math.abs(h - ground) > 4) return false;

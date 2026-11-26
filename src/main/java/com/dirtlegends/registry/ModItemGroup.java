@@ -33,6 +33,12 @@ public final class ModItemGroup {
                         entries.accept(ModItems.MUD_BUCKET);
                         entries.accept(ModItems.ENGINE);
                         entries.accept(ModItems.TIRE);
+                        entries.accept(ModItems.HOT_DOG);
+                        entries.accept(ModItems.BURGER);
+                        entries.accept(ModItems.NACHOS);
+                        entries.accept(ModItems.POPCORN);
+                        entries.accept(ModItems.SODA);
+                        entries.accept(ModItems.ENERGY_DRINK);
                     })
                     .build());
 

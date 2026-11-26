@@ -2,6 +2,9 @@ package com.dirtlegends.client;
 
 import com.dirtlegends.DirtLegends;
 import com.dirtlegends.entity.MotoVehicleEntity;
+import com.dirtlegends.npc.RacerEntity;
+import com.dirtlegends.npc.SpectatorEntity;
+import com.dirtlegends.npc.VendorEntity;
 import com.dirtlegends.network.CrashPayload;
 import com.dirtlegends.registry.ModEntities;
 import com.dirtlegends.registry.ModFluids;
@@ -27,6 +30,13 @@ public class DirtLegendsClient implements ClientModInitializer {
                 context -> new VehicleRenderer(context, new DirtBikeModel(context.bakeLayer(DirtBikeModel.LAYER)), 0.6f, "dirt_bike"));
         EntityRendererRegistry.register(ModEntities.ATV,
                 context -> new VehicleRenderer(context, new AtvModel(context.bakeLayer(AtvModel.LAYER)), 0.8f, "atv"));
+
+        EntityRendererRegistry.register(ModEntities.SPECTATOR,
+                ctx -> new NpcRenderer<>(ctx, "spectator", "fan", SpectatorEntity.SKINS, SpectatorEntity::getSkin));
+        EntityRendererRegistry.register(ModEntities.RACER,
+                ctx -> new NpcRenderer<>(ctx, "racer", "racer", RacerEntity.SKINS, RacerEntity::getSkin));
+        EntityRendererRegistry.register(ModEntities.VENDOR,
+                ctx -> new NpcRenderer<>(ctx, "vendor", "vendor", 2, VendorEntity::getKind));
 
         HudElementRegistry.addLast(DirtLegends.id("vehicle_hud"), VehicleHud::render);
 

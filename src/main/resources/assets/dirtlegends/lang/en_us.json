@@ -29,5 +29,14 @@
   "fluid.dirtlegends.mud": "Liquid Mud",
   "item.dirtlegends.fuel_can": "Fuel Can",
   "item.dirtlegends.mud_bucket": "Bucket of Liquid Mud",
-  "item.dirtlegends.track_kit": "Track Kit"
+  "item.dirtlegends.track_kit": "Track Kit",
+  "item.dirtlegends.hot_dog": "Hot Dog",
+  "item.dirtlegends.burger": "Burger",
+  "item.dirtlegends.nachos": "Nachos",
+  "item.dirtlegends.popcorn": "Popcorn",
+  "item.dirtlegends.soda": "Soda",
+  "item.dirtlegends.energy_drink": "Nitro Energy Drink",
+  "entity.dirtlegends.spectator": "Fan",
+  "entity.dirtlegends.racer": "Rival Racer",
+  "entity.dirtlegends.vendor": "Vendor"
 }
